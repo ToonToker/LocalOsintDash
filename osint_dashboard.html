@@ -65,6 +65,10 @@ body::after{
   50%  { opacity:1; }
   100% { opacity:0.6; }
 }
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important;}
+}
 /* ═══ BACKGROUND LAYER 2 — Grid + hex dots ═══ */
 #bg-grid{
   position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
@@ -1117,6 +1121,14 @@ body.bg-aurora-wave::before {
   <button class="nav-btn" onclick="go(20)" title="Password">🔑<span class="ntip">Password Analyzer</span></button>
   <button class="nav-btn" onclick="go(21)" title="Port Scan">🖧<span class="ntip">Port Scanner</span></button>
   <button class="nav-btn" onclick="go(22)" title="Rev WHOIS">📋<span class="ntip">Reverse WHOIS</span></button>
+
+  <button class="nav-btn" onclick="go(23)" title="Case Manager">🗂️<span class="ntip">Case Manager</span></button>
+  <button class="nav-btn" onclick="go(24)" title="Threat Intel">🧬<span class="ntip">Threat Intelligence</span></button>
+  <button class="nav-btn" onclick="go(25)" title="Metadata">🧾<span class="ntip">Metadata Extractor</span></button>
+  <button class="nav-btn" onclick="go(26)" title="Geolocation">🗺️<span class="ntip">Geo &amp; Mapping</span></button>
+  <button class="nav-btn" onclick="go(27)" title="CT Logs">📜<span class="ntip">Certificate Transparency</span></button>
+  <button class="nav-btn" onclick="go(28)" title="Network OSINT">🛰️<span class="ntip">Network OSINT</span></button>
+  <button class="nav-btn" onclick="go(29)" title="Local Sources">🧩<span class="ntip">Local Source Hub</span></button>
 </div>
 
   <!-- CONTENT -->
@@ -2683,6 +2695,30 @@ body.bg-aurora-wave::before {
 
   </div>
 </div>
+
+
+<!-- ══════════ PAGE 29: LOCAL SOURCE HUB ══════════ -->
+<div class="page" id="pg-29">
+  <div class="card">
+    <div class="card-hdr">🧩 Local Source Hub <span id="local-src-count" style="font-size:10px;color:var(--muted)">0 indexed</span></div>
+    <div class="card-body">
+      <div class="input-row">
+        <input id="local-src-query" class="big-input" type="text" placeholder="Search bundled source files by file name, title, city, or category" oninput="localSourceSearch()" />
+        <button class="btn sm" onclick="localSourceSearch()">🔍 Search</button>
+        <button class="btn sm warn" onclick="document.getElementById('local-src-query').value='';localSourceSearch();">✕ Clear</button>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px">Results render inline. Use <b>Load Inline</b> to inspect sources without opening another tab.</p>
+      <div id="local-src-results" style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px"></div>
+    </div>
+  </div>
+  <div class="card" id="local-src-preview-wrap" style="display:none">
+    <div class="card-hdr">🖥️ Inline Source Preview <span id="local-src-current" style="font-size:10px;color:var(--muted)"></span></div>
+    <div class="card-body" style="padding:8px">
+      <iframe id="local-src-frame" title="Local Source Preview" loading="lazy" style="width:100%;height:72vh;border:1px solid rgba(var(--r),var(--g),var(--b),0.22);border-radius:6px;background:#03070c"></iframe>
+    </div>
+  </div>
+</div>
+
 </div><!-- /content -->
 </div><!-- /main -->
 
@@ -2692,6 +2728,64 @@ let stats = { checked:0, valid:0, dead:0, sites:0 };
 let history = [];
 let bulkResults = [];
 let currentPage = 0;
+
+
+const LOCAL_SOURCE_FILES = [
+  {file:'ABC.html',title:'ABC',cat:'news'}, {file:'API.html',title:'IntelTechniques API Search Tool',cat:'inteltechniques'}, {file:'APILinks.html',title:'IntelTechniques API Search Tool',cat:'inteltechniques'}, {file:'AU-ABC.html',title:'AU-ABC',cat:'news'},
+  {file:'Address.html',title:'IntelTechniques Address Search Tool',cat:'inteltechniques'}, {file:'Africanews.html',title:'Africanews',cat:'news'}, {file:'AlJazeera.html',title:'AlJazeera',cat:'news'}, {file:'Atlanta.html',title:'Atlanta',cat:'local-news'},
+  {file:'Atlanta2.html',title:'Atlanta2',cat:'local-news'}, {file:'Austin.html',title:'Austin',cat:'local-news'}, {file:'Baltimore.html',title:'Baltimore',cat:'local-news'}, {file:'Bloomberg.html',title:'Bloomberg',cat:'news'},
+  {file:'Boston.html',title:'Boston',cat:'local-news'}, {file:'Boston2.html',title:'Boston2',cat:'local-news'}, {file:'Breaches.html',title:'IntelTechniques Breaches Tool',cat:'inteltechniques'}, {file:'Business.html',title:'IntelTechniques Business & Government Tool',cat:'inteltechniques'},
+  {file:'CA-Global.html',title:'CA-Global',cat:'news'}, {file:'CBC.html',title:'CBC',cat:'news'}, {file:'CBS.html',title:'CBS',cat:'news'}, {file:'CNN.html',title:'CNN',cat:'news'},
+  {file:'Charlotte.html',title:'Charlotte',cat:'local-news'}, {file:'Chicago.html',title:'Chicago',cat:'local-news'}, {file:'Chicago2.html',title:'Chicago2',cat:'local-news'}, {file:'Cleveland.html',title:'Cleveland',cat:'local-news'},
+  {file:'Colorado.html',title:'Colorado',cat:'local-news'}, {file:'Columbus.html',title:'Columbus',cat:'local-news'}, {file:'Communities.html',title:'IntelTechniques Communities Tool',cat:'inteltechniques'}, {file:'Currencies.html',title:'IntelTechniques Virtual Currencies Tool',cat:'inteltechniques'},
+  {file:'DC.html',title:'DC',cat:'local-news'}, {file:'DC2.html',title:'DC2',cat:'local-news'}, {file:'Dallas.html',title:'Dallas',cat:'local-news'}, {file:'Dallas2.html',title:'Dallas2',cat:'local-news'}, {file:'Dallas3.html',title:'Dallas3',cat:'local-news'},
+  {file:'Dayton.html',title:'Dayton',cat:'local-news'}, {file:'Denver.html',title:'Denver',cat:'local-news'}, {file:'Detroit.html',title:'Detroit',cat:'local-news'}, {file:'Detroit2.html',title:'Detroit2',cat:'local-news'},
+  {file:'Documents.html',title:'IntelTechniques Documents Tool',cat:'inteltechniques'}, {file:'Domain.html',title:'IntelTechniques Domain Tool',cat:'inteltechniques'}, {file:'Email.html',title:'IntelTechniques Email Tool',cat:'inteltechniques'},
+  {file:'FOX.html',title:'FOX',cat:'news'}, {file:'Facebook.html',title:'IntelTechniques Facebook Tool',cat:'inteltechniques'}, {file:'France24.html',title:'France24',cat:'news'}, {file:'GB.html',title:'GB',cat:'news'}, {file:'GermanyDW.html',title:'GermanyDW',cat:'news'},
+  {file:'Greensboro.html',title:'Greensboro',cat:'local-news'}, {file:'Hartford.html',title:'Hartford',cat:'local-news'}, {file:'Houston.html',title:'Houston',cat:'local-news'}, {file:'Houston2.html',title:'Houston2',cat:'local-news'}, {file:'Houston3.html',title:'Houston3',cat:'local-news'},
+  {file:'IP.html',title:'IntelTechniques IP Address Tool',cat:'inteltechniques'}, {file:'Images.html',title:'IntelTechniques Images Tool',cat:'inteltechniques'}, {file:'Indianapolis.html',title:'Indianapolis',cat:'local-news'}, {file:'Instagram.html',title:'IntelTechniques Instagram Tool',cat:'inteltechniques'},
+  {file:'Jacksonville.html',title:'Jacksonville',cat:'local-news'}, {file:'License.html',title:'IntelTechniques Search Tools',cat:'inteltechniques'}, {file:'LinkedIn.html',title:'IntelTechniques LinkedIn Tool',cat:'inteltechniques'}, {file:'Location.html',title:'IntelTechniques Location Tool',cat:'inteltechniques'},
+  {file:'LosAngeles.html',title:'LosAngeles',cat:'local-news'}, {file:'LosAngeles2.html',title:'LosAngeles2',cat:'local-news'}, {file:'Memphis.html',title:'Memphis',cat:'local-news'}, {file:'Miami.html',title:'Miami',cat:'local-news'},
+  {file:'Milwaukee.html',title:'Milwaukee',cat:'local-news'}, {file:'Minnesota.html',title:'Minnesota',cat:'local-news'}, {file:'Minnesota2.html',title:'Minnesota2',cat:'local-news'}, {file:'Minnesota3.html',title:'Minnesota3',cat:'local-news'},
+  {file:'NBC.html',title:'NBC',cat:'news'}, {file:'Name.html',title:'IntelTechniques Name Tool',cat:'inteltechniques'}, {file:'NewYork.html',title:'NewYork',cat:'local-news'}, {file:'NewYork2.html',title:'NewYork2',cat:'local-news'}, {file:'NewYork3.html',title:'NewYork3',cat:'local-news'},
+  {file:'Newsy.html',title:'Newsy',cat:'news'}, {file:'Orlando.html',title:'Orlando',cat:'local-news'}, {file:'Orlando2.html',title:'Orlando2',cat:'local-news'}, {file:'PBS.html',title:'PBS',cat:'news'}, {file:'Pastes.html',title:'IntelTechniques Pastes Tool',cat:'inteltechniques'},
+  {file:'Philadelphia.html',title:'Philadelphia',cat:'local-news'}, {file:'Philadelphia2.html',title:'Philadelphia2',cat:'local-news'}, {file:'Phoenix.html',title:'Phoenix',cat:'local-news'}, {file:'Phoenix2.html',title:'Phoenix2',cat:'local-news'}, {file:'Phoenix3.html',title:'Phoenix3',cat:'local-news'},
+  {file:'Pittsburgh.html',title:'Pittsburgh',cat:'local-news'}, {file:'Pittsburgh2.html',title:'Pittsburgh2',cat:'local-news'}, {file:'Portland.html',title:'Portland',cat:'local-news'}, {file:'RT-News.html',title:'RT-News',cat:'news'},
+  {file:'Radio.html',title:'IntelTechniques Radio Feed Tool',cat:'inteltechniques'}, {file:'STLKSDK.html',title:'STLKSDK',cat:'news'}, {file:'Sacremento.html',title:'Sacremento',cat:'local-news'}, {file:'Sacremento2.html',title:'Sacremento2',cat:'local-news'},
+  {file:'SanDiego.html',title:'SanDiego',cat:'local-news'}, {file:'SanFrancisco.html',title:'SanFrancisco',cat:'local-news'}, {file:'SanFrancisco2.html',title:'SanFrancisco2',cat:'local-news'}, {file:'SanFranciscoABC.html',title:'SanFranciscoABC',cat:'local-news'},
+  {file:'Search.html',title:'IntelTechniques Search Tool',cat:'inteltechniques'}, {file:'Seattle.html',title:'Seattle',cat:'local-news'}, {file:'Seattle2.html',title:'Seattle2',cat:'local-news'}, {file:'Sky.html',title:'Sky',cat:'news'},
+  {file:'Tampa.html',title:'Tampa',cat:'local-news'}, {file:'Tampa2.html',title:'Tampa2',cat:'local-news'}, {file:'Telephone.html',title:'IntelTechniques Telephone Tool',cat:'inteltechniques'}, {file:'Tulsa.html',title:'Tulsa',cat:'local-news'},
+  {file:'Twitter.html',title:'IntelTechniques X (Twitter) Tool',cat:'inteltechniques'}, {file:'Username.html',title:'IntelTechniques Username Tool',cat:'inteltechniques'}, {file:'Vehicle.html',title:'IntelTechniques Vehicle Search Tool',cat:'inteltechniques'},
+  {file:'Video.html',title:'IntelTechniques Video Feed Tool',cat:'inteltechniques'}, {file:'Videos.html',title:'IntelTechniques Videos Tool',cat:'inteltechniques'}, {file:'index.html',title:'IntelTechniques Search Tools',cat:'inteltechniques'}
+];
+
+function localSourceSearch(){
+  const q=(document.getElementById('local-src-query')?.value||'').trim().toLowerCase();
+  const out=document.getElementById('local-src-results');
+  if(!out) return;
+  const list = q ? LOCAL_SOURCE_FILES.filter(item => `${item.file} ${item.title} ${item.cat}`.toLowerCase().includes(q)) : LOCAL_SOURCE_FILES;
+  document.getElementById('local-src-count').textContent = `${list.length} / ${LOCAL_SOURCE_FILES.length} indexed`;
+  out.innerHTML = list.slice(0,120).map(item=>`
+    <div style="border:1px solid rgba(var(--r),var(--g),var(--b),0.16);border-radius:7px;padding:9px;background:rgba(0,0,0,0.22)">
+      <div style="font-size:11px;color:var(--accent);font-weight:bold;word-break:break-all">${E(item.title)}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">${E(item.file)} · ${E(item.cat)}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+        <button class="btn sm" onclick="localSourceLoad('${item.file}')">🖥️ Load Inline</button>
+        <a class="btn sm" href="${item.file}" target="_blank" rel="noopener">↗ Open</a>
+      </div>
+    </div>`).join('') || `<div style="font-size:12px;color:var(--warn)">No local source matched your query.</div>`;
+}
+
+function localSourceLoad(file){
+  const iframe=document.getElementById('local-src-frame');
+  if(!iframe) return;
+  iframe.src=file;
+  document.getElementById('local-src-preview-wrap').style.display='block';
+  document.getElementById('local-src-current').textContent=file;
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{ localSourceSearch(); });
+
 
 // ─── DISPOSABLE EMAIL DOMAINS ────────────────────────────────────────────────
 const DISPOSABLE_DOMAINS = new Set([
